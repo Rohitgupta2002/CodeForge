@@ -1,7 +1,18 @@
+
+# Old Git backups
 .git-old/
 .git-backup/
+
+# Dependencies
 node_modules/
+
+# Environment variables
 .env
 .env.*
 !.env.example
+
+# Build files
 dist/
+
+# System files
+.DS_Store
