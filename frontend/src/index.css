@@ -1,0 +1,199 @@
+@import "tailwindcss";
+@plugin "daisyui" {
+  themes: false;
+}
+
+@plugin "daisyui/theme" {
+  name: "nightcode";
+  default: true;
+  prefersdark: true;
+  color-scheme: "dark";
+
+  --color-base-100: oklch(21% 0.02 255);
+  --color-base-200: oklch(16% 0.02 255);
+  --color-base-300: oklch(27% 0.025 255);
+  --color-base-content: oklch(96% 0.01 250);
+  --color-primary: oklch(76% 0.13 195);
+  --color-primary-content: oklch(18% 0.04 195);
+  --color-secondary: oklch(72% 0.12 305);
+  --color-secondary-content: oklch(18% 0.04 305);
+  --color-accent: oklch(82% 0.13 85);
+  --color-accent-content: oklch(22% 0.05 85);
+  --color-neutral: oklch(25% 0.02 255);
+  --color-neutral-content: oklch(94% 0.01 250);
+  --color-info: oklch(74% 0.1 230);
+  --color-info-content: oklch(18% 0.04 230);
+  --color-success: oklch(74% 0.16 155);
+  --color-success-content: oklch(18% 0.04 155);
+  --color-warning: oklch(82% 0.14 80);
+  --color-warning-content: oklch(22% 0.05 80);
+  --color-error: oklch(68% 0.2 25);
+  --color-error-content: oklch(98% 0.01 25);
+  --radius-selector: 0.9rem;
+  --radius-field: 0.7rem;
+  --radius-box: 1rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 1;
+  --noise: 0;
+}
+
+:root {
+  font-family: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  background:
+    radial-gradient(1200px 600px at 15% -10%, oklch(42% 0.09 195 / 0.18), transparent 60%),
+    radial-gradient(900px 500px at 90% 0%, oklch(42% 0.08 305 / 0.14), transparent 55%),
+    radial-gradient(800px 600px at 50% 100%, oklch(35% 0.06 250 / 0.12), transparent 50%),
+    oklch(16% 0.02 255);
+  color: oklch(96% 0.01 250);
+}
+
+code,
+pre,
+.font-mono {
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+::selection {
+  background: oklch(76% 0.13 195 / 0.35);
+  color: #ffffff;
+}
+
+/* Custom Sleek Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: oklch(35% 0.025 255 / 0.7);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: oklch(45% 0.03 255 / 0.9);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: oklch(35% 0.025 255 / 0.7) transparent;
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes pulse-subtle {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+.animate-fade-up {
+  animation: fade-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out both;
+}
+
+.animate-pulse-subtle {
+  animation: pulse-subtle 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.stagger-1 {
+  animation-delay: 0.04s;
+}
+.stagger-2 {
+  animation-delay: 0.08s;
+}
+.stagger-3 {
+  animation-delay: 0.12s;
+}
+.stagger-4 {
+  animation-delay: 0.16s;
+}
+
+.surface-card {
+  background-color: oklch(21% 0.02 255 / 0.85);
+  border: 1px solid oklch(30% 0.025 255 / 0.7);
+  box-shadow: 0 10px 25px -5px oklch(0% 0 0 / 0.3);
+  backdrop-filter: blur(12px);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.surface-card:hover {
+  transform: translateY(-2px);
+  border-color: oklch(76% 0.13 195 / 0.4);
+  box-shadow: 0 20px 35px -10px oklch(0% 0 0 / 0.45);
+}
+
+.glass-panel {
+  background: oklch(21% 0.02 255 / 0.75);
+  backdrop-filter: blur(16px);
+  border: 1px solid oklch(32% 0.025 255 / 0.6);
+}
+
+.page-wrap {
+  margin-left: auto;
+  margin-right: auto;
+  width: 100%;
+  max-width: 72rem;
+  padding-left: 1rem;
+  padding-right: 1rem;
+  padding-top: 1.5rem;
+  padding-bottom: 2.5rem;
+}
+
+@media (min-width: 640px) {
+  .page-wrap {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+    padding-top: 2rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .page-wrap {
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
+}
+
+.soft-divider {
+  border-color: oklch(30% 0.025 255 / 0.7);
+}
