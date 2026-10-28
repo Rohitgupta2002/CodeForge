@@ -41,11 +41,22 @@ const register = async (req,res)=>{
     })
     }
     catch(err){
-        if (err.code === 11000) {
-            return res.status(400).send("An account with this email address already exists");
-        }
-        res.status(400).send(err.message || "Registration failed");
+    console.error("Registration Error:", {
+        code: err.code,
+        keyPattern: err.keyPattern,
+        keyValue: err.keyValue,
+        message: err.message
+    });
+
+    if (err.code === 11000) {
+        return res.status(400).send(
+            "An account with this email address already exists"
+        );
     }
+
+    res.status(400).send(err.message || "Registration failed");
+}
+    
 }
 
 
