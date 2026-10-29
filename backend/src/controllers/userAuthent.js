@@ -40,21 +40,25 @@ const register = async (req,res)=>{
         message:"Loggin Successfully"
     })
     }
-    catch(err){
-    console.error("Registration Error:", {
+
+catch (err) {
+    console.error("SIGNUP_ERROR_DEBUG", {
         code: err.code,
         keyPattern: err.keyPattern,
-        keyValue: err.keyValue,
-        message: err.message
+        keyNames: Object.keys(err.keyPattern || {}),
+        name: err.name
     });
 
     if (err.code === 11000) {
-        return res.status(400).send(
-            "An account with this email address already exists"
-        );
+        return res.status(409).json({
+            message: "Duplicate database value",
+            duplicateFields: Object.keys(err.keyPattern || {})
+        });
     }
 
-    res.status(400).send(err.message || "Registration failed");
+    return res.status(400).json({
+        message: err.message || "Registration failed"
+    });
 }
     
 }
@@ -135,13 +139,19 @@ const adminRegister = async(req,res)=>{
      const user =  await User.create(req.body);
      const token =  jwt.sign({_id:user._id , emailId:emailId, role:user.role},process.env.JWT_KEY,{expiresIn: 60*60});
      res.cookie('token',token,cookieOptions);
-     res.status(201).send("User Registered Successfully");
+     res.status(201).json({
+         message: "User Registered Successfully"
+     });
     }
     catch(err){
         if (err.code === 11000) {
-            return res.status(400).send("An account with this email address already exists");
+            return res.status(409).json({
+                message: "An account with this email address already exists"
+            });
         }
-        res.status(400).send(err.message || "Registration failed");
+        res.status(400).json({
+            message: err.message || "Registration failed"
+        });
     }
 }
 
