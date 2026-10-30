@@ -53,6 +53,7 @@ const submitCode = async (req,res)=>{
 
     
     const testResult = await executeSubmissions(submissions, {stopOnError: true});
+    console.log("SUBMISSION RESULTS:", JSON.stringify(testResult, null, 2));
     
 
     // submittedResult ko update karo
