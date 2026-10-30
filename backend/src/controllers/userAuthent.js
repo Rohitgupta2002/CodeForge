@@ -12,21 +12,55 @@ const cookieOptions = {
   secure: process.env.NODE_ENV === 'production'
 };
 
+const sendRegistrationError = (err, res) => {
+    const duplicateFields = Object.keys(err.keyPattern || {});
+
+    if (err.code === 11000) {
+        // Keep operational evidence in server logs without exposing database
+        // implementation details to the browser.
+        console.error("Registration duplicate-key conflict", {
+            keyNames: duplicateFields
+        });
+
+        if (duplicateFields.length === 1 && duplicateFields[0] === 'emailId') {
+            return res.status(409).json({
+                message: "An account with this email address already exists"
+            });
+        }
+
+        return res.status(409).json({
+            message: "Unable to create an account because of a data conflict"
+        });
+    }
+
+    if (err.statusCode === 400 || err.name === 'ValidationError') {
+        return res.status(400).json({
+            message: err.message || "Registration failed"
+        });
+    }
+
+    console.error("Registration failed", { code: err.code, name: err.name });
+    return res.status(500).json({ message: "Registration failed" });
+};
+
 
 const register = async (req,res)=>{
     
     try{
         // validate the data;
 
-      validate(req.body); 
-      const {firstName, emailId, password}  = req.body;
+      const {firstName, emailId, password} = req.body || {};
+      validate({firstName, emailId, password});
 
-      req.body.password = await bcrypt.hash(password, 10);
-      req.body.role = 'user'
-    //
-    
-     const user =  await User.create(req.body);
-     const token =  jwt.sign({_id:user._id , emailId:emailId, role:'user'},process.env.JWT_KEY,{expiresIn: 60*60});
+      // Only accept the fields owned by public registration. In particular,
+      // clients must not be able to provide roles or solved-problem data.
+      const user = await User.create({
+        firstName: firstName.trim(),
+        emailId: emailId.trim().toLowerCase(),
+        password: await bcrypt.hash(password, 10),
+        role: 'user'
+      });
+     const token =  jwt.sign({_id:user._id , emailId:user.emailId, role:'user'},process.env.JWT_KEY,{expiresIn: 60*60});
      const reply = {
         firstName: user.firstName,
         emailId: user.emailId,
@@ -40,26 +74,9 @@ const register = async (req,res)=>{
         message:"Loggin Successfully"
     })
     }
-
-catch (err) {
-    console.error("SIGNUP_ERROR_DEBUG", {
-        code: err.code,
-        keyPattern: err.keyPattern,
-        keyNames: Object.keys(err.keyPattern || {}),
-        name: err.name
-    });
-
-    if (err.code === 11000) {
-        return res.status(409).json({
-            message: "Duplicate database value",
-            duplicateFields: Object.keys(err.keyPattern || {})
-        });
+    catch (err) {
+        return sendRegistrationError(err, res);
     }
-
-    return res.status(400).json({
-        message: err.message || "Registration failed"
-    });
-}
     
 }
 
@@ -144,14 +161,7 @@ const adminRegister = async(req,res)=>{
      });
     }
     catch(err){
-        if (err.code === 11000) {
-            return res.status(409).json({
-                message: "An account with this email address already exists"
-            });
-        }
-        res.status(400).json({
-            message: err.message || "Registration failed"
-        });
+        return sendRegistrationError(err, res);
     }
 }
 

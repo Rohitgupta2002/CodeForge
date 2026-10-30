@@ -37,7 +37,9 @@ const userMiddleware = async (req,res,next)=>{
         next();
     }
     catch(err){
-        res.status(401).send("Error: "+ err.message)
+        // A missing/expired/revoked token is an expected state for a logged-out
+        // browser. Do not expose JWT or database failure details to the client.
+        res.status(401).json({ message: "Unauthenticated" });
     }
 
 }
