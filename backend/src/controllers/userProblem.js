@@ -63,65 +63,60 @@ const createProblem = async (req,res)=>{
 }
 
 const updateProblem = async (req,res)=>{
-    
   const {id} = req.params;
-  const {title,description,difficulty,tags,
-    visibleTestCases,hiddenTestCases,startCode,
-    referenceSolution, problemCreator
-   } = req.body;
-
   try{
-
-     if(!id){
-      return res.status(400).send("Missing ID Field");
-     }
+    if(!id) return res.status(400).json({ message: "Missing ID field" });
 
     const DsaProblem =  await Problem.findById(id);
-    if(!DsaProblem)
-    {
-      return res.status(404).send("ID is not persent in server");
+    if(!DsaProblem) return res.status(404).json({ message: "Problem not found" });
+
+    const editableFields = ['title', 'description', 'difficulty', 'tags', 'constraints',
+      'visibleTestCases', 'hiddenTestCases', 'startCode', 'referenceSolution'];
+    const updates = Object.fromEntries(editableFields
+      .filter((field) => Object.prototype.hasOwnProperty.call(req.body, field))
+      .map((field) => [field, req.body[field]]));
+
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ message: 'No editable fields were supplied' });
     }
-      
-    for(const {language,completeCode} of referenceSolution){
-         
 
-      // source_code:
-      // language_id:
-      // stdin: 
-      // expectedOutput:
-
+    // Preserve omitted values and never allow an edit to replace the creator.
+    const candidate = { ...DsaProblem.toObject(), ...updates };
+    for(const {language,completeCode} of candidate.referenceSolution){
       const languageId = getLanguageById(language);
-        
-      // I am creating Batch submission
-      const submissions = visibleTestCases.map((testcase)=>({
-          source_code:completeCode,
-          language_id: languageId,
-          stdin: testcase.input,
-          expected_output: testcase.output
+      const submissions = candidate.visibleTestCases.map((testcase) => ({
+        source_code: completeCode,
+        language_id: languageId,
+        stdin: testcase.input,
+        expected_output: testcase.output
       }));
-
-
-     const testResult = await executeSubmissions(submissions, {stopOnError: true});
-
-    //  console.log(testResult);
-
-     for(const test of testResult){
-      if(test.status_id!=3){
-       return res.status(400).send("Error Occured");
+      const testResult = await executeSubmissions(submissions, {stopOnError: true});
+      for(const test of testResult){
+        if(test.status_id != 3){
+          return res.status(400).json({ message: 'Reference solution failed a visible test case' });
+        }
       }
-     }
-
     }
 
-
-  const newProblem = await Problem.findByIdAndUpdate(id , {...req.body}, {runValidators:true, new:true});
-   
-  res.status(200).send(newProblem);
+    const newProblem = await Problem.findByIdAndUpdate(id, updates, {runValidators:true, new:true});
+    return res.status(200).json(newProblem);
   }
   catch(err){
-      res.status(500).send("Error: "+err);
+      console.error('Problem update failed:', err);
+      return res.status(500).json({ message: 'Unable to update problem' });
   }
 }
+
+// Hidden cases are deliberately returned only through this admin route.
+const getAdminProblemById = async (req,res) => {
+  try {
+    const problem = await Problem.findById(req.params.id);
+    if (!problem) return res.status(404).json({ message: 'Problem not found' });
+    return res.status(200).json(problem);
+  } catch (err) {
+    return res.status(400).json({ message: 'Invalid problem ID' });
+  }
+};
 
 const deleteProblem = async(req,res)=>{
 
@@ -232,5 +227,5 @@ const submittedProblem = async(req,res)=>{
 
 
 
-module.exports = {createProblem,updateProblem,deleteProblem,getProblemById,getAllProblem,solvedAllProblembyUser,submittedProblem};
+module.exports = {createProblem,updateProblem,deleteProblem,getProblemById,getAdminProblemById,getAllProblem,solvedAllProblembyUser,submittedProblem};
 

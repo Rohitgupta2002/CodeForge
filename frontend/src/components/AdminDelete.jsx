@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { NavLink } from 'react-router';
-import { ArrowLeft, Trash2, Search, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, Trash2, Search, Pencil } from 'lucide-react';
 import axiosClient from '../utils/axiosClient';
 import PageShell from './ui/PageShell';
 import LoadingState from './ui/LoadingState';
@@ -62,10 +62,10 @@ const AdminDelete = () => {
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-base-content">
-            Delete Problems
+            Manage Problems
           </h1>
           <p className="mt-1 text-xs sm:text-sm text-base-content/60">
-            Permanently remove coding challenges from the live platform.
+            Review, edit, or remove coding challenges from the live platform.
           </p>
         </div>
         <NavLink
@@ -89,7 +89,7 @@ const AdminDelete = () => {
             />
             <input
               type="text"
-              placeholder="Search problems to delete..."
+              placeholder="Search problems..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="input input-bordered input-sm w-full pl-9 text-xs bg-base-100"
@@ -143,6 +143,13 @@ const AdminDelete = () => {
                     </span>
                   </td>
                   <td className="text-right">
+                    <NavLink
+                      to={`/admin/edit/${problem._id}`}
+                      className="btn btn-ghost btn-xs text-primary hover:bg-primary/10 gap-1 mr-1"
+                    >
+                      <Pencil size={13} />
+                      Edit
+                    </NavLink>
                     <button
                       type="button"
                       onClick={() => setProblemToDelete(problem)}

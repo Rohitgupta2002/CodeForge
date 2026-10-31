@@ -59,6 +59,10 @@ function App() {
         element={isAuthenticated && user?.role === 'admin' ? <AdminPanel /> : <Navigate to="/" />}
       />
       <Route
+        path="/admin/edit/:problemId"
+        element={isAuthenticated && user?.role === 'admin' ? <AdminPanel /> : <Navigate to="/" />}
+      />
+      <Route
         path="/admin/delete"
         element={isAuthenticated && user?.role === 'admin' ? <AdminDelete /> : <Navigate to="/" />}
       />

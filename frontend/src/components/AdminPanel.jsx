@@ -1,20 +1,21 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import axiosClient from '../utils/axiosClient';
-import { useNavigate, NavLink } from 'react-router';
+import { useNavigate, NavLink, useParams } from 'react-router';
+import { DSA_TOPICS } from '../utils/problemTags';
+import { getStarterTemplates } from '../config/defaultStarterTemplates';
+import ConfirmModal from './ui/ConfirmModal';
 import PageShell from './ui/PageShell';
 import {
   ArrowLeft,
   Plus,
   Trash2,
   FileCode,
-  CheckCircle2,
   ListPlus,
   Layers,
-  Send,
-  Sparkles
+  Send
 } from 'lucide-react';
 
 // Zod schema matching the problem schema
@@ -22,7 +23,8 @@ const problemSchema = z.object({
   title: z.string().min(1, 'Title is required'),
   description: z.string().min(1, 'Description is required'),
   difficulty: z.enum(['easy', 'medium', 'hard']),
-  tags: z.enum(['array', 'linkedList', 'graph', 'dp']),
+  tags: z.string().min(1, 'A topic is required'),
+  constraints: z.string().optional(),
   visibleTestCases: z.array(
     z.object({
       input: z.string().min(1, 'Input is required'),
@@ -52,26 +54,30 @@ const problemSchema = z.object({
 
 function AdminPanel() {
   const navigate = useNavigate();
+  const { problemId } = useParams();
+  const isEditing = Boolean(problemId);
   const [submitting, setSubmitting] = useState(false);
+  const [loadingProblem, setLoadingProblem] = useState(isEditing);
+  const [loadError, setLoadError] = useState(null);
+  const [feedback, setFeedback] = useState(null);
+  const [pendingRemoval, setPendingRemoval] = useState(null);
   const [activeCodeLangTab, setActiveCodeLangTab] = useState(0); // 0 = C++, 1 = Java, 2 = JS
 
   const {
     register,
     control,
     handleSubmit,
+    reset,
     formState: { errors }
   } = useForm({
     resolver: zodResolver(problemSchema),
     defaultValues: {
       difficulty: 'easy',
       tags: 'array',
+      constraints: '',
       visibleTestCases: [{ input: '', output: '', explanation: '' }],
       hiddenTestCases: [{ input: '', output: '' }],
-      startCode: [
-        { language: 'C++', initialCode: '' },
-        { language: 'Java', initialCode: '' },
-        { language: 'JavaScript', initialCode: '' }
-      ],
+      startCode: getStarterTemplates(),
       referenceSolution: [
         { language: 'C++', completeCode: '' },
         { language: 'Java', completeCode: '' },
@@ -79,6 +85,32 @@ function AdminPanel() {
       ]
     }
   });
+
+  useEffect(() => {
+    if (!isEditing) return;
+
+    const loadProblem = async () => {
+      try {
+        setLoadingProblem(true);
+        const { data } = await axiosClient.get(`/problem/admin/${problemId}`);
+        reset({
+          ...data,
+          constraints: data.constraints || '',
+          visibleTestCases: data.visibleTestCases || [],
+          hiddenTestCases: data.hiddenTestCases || [],
+          // Merge defaults only for languages absent from older problems.
+          startCode: getStarterTemplates(data.startCode),
+          referenceSolution: data.referenceSolution || []
+        });
+      } catch (error) {
+        setLoadError(error.response?.data?.message || 'Unable to load this problem.');
+      } finally {
+        setLoadingProblem(false);
+      }
+    };
+
+    loadProblem();
+  }, [isEditing, problemId, reset]);
 
   const {
     fields: visibleFields,
@@ -101,11 +133,16 @@ function AdminPanel() {
   const onSubmit = async (data) => {
     try {
       setSubmitting(true);
-      await axiosClient.post('/problem/create', data);
-      alert('Problem created successfully!');
-      navigate('/');
+      if (isEditing) {
+        await axiosClient.put(`/problem/update/${problemId}`, data);
+        setFeedback({ type: 'success', message: 'Problem changes saved successfully.' });
+      } else {
+        await axiosClient.post('/problem/create', data);
+        alert('Problem created successfully!');
+        navigate('/admin/delete');
+      }
     } catch (error) {
-      alert(`Error creating problem: ${error.response?.data?.message || error.message}`);
+      setFeedback({ type: 'error', message: error.response?.data?.message || 'Unable to save the problem.' });
     } finally {
       setSubmitting(false);
     }
@@ -113,15 +150,30 @@ function AdminPanel() {
 
   const languages = ['C++', 'Java', 'JavaScript'];
 
+  const confirmRemoveTestCase = () => {
+    if (!pendingRemoval) return;
+    if (pendingRemoval.type === 'visible') removeVisible(pendingRemoval.index);
+    else removeHidden(pendingRemoval.index);
+    setPendingRemoval(null);
+  };
+
+  if (loadingProblem) {
+    return <PageShell><div className="py-16 text-center"><span className="loading loading-spinner loading-md" /> <p className="mt-3 text-sm text-base-content/60">Loading problem…</p></div></PageShell>;
+  }
+
+  if (loadError) {
+    return <PageShell><div className="alert alert-error"><span>{loadError}</span><NavLink to="/admin/delete" className="btn btn-sm">Back to Manage Problems</NavLink></div></PageShell>;
+  }
+
   return (
     <PageShell>
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-base-content">
-            Create New Coding Challenge
+            {isEditing ? 'Edit Coding Challenge' : 'Create New Coding Challenge'}
           </h1>
           <p className="mt-1 text-xs sm:text-sm text-base-content/60">
-            Define problem metadata, judge test cases, and starter code templates.
+            {isEditing ? 'Update problem metadata, test cases, and code templates.' : 'Define problem metadata, judge test cases, and starter code templates.'}
           </p>
         </div>
         <NavLink
@@ -134,6 +186,11 @@ function AdminPanel() {
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        {feedback && (
+          <div className={`alert ${feedback.type === 'error' ? 'alert-error' : 'alert-success'}`}>
+            <span>{feedback.message}</span>
+          </div>
+        )}
         {/* Section 1: Basic Metadata */}
         <div className="surface-card rounded-3xl p-6 sm:p-7 border-base-300">
           <div className="flex items-center gap-2 mb-4 border-b border-base-300/70 pb-3">
@@ -163,6 +220,12 @@ function AdminPanel() {
             </div>
 
             <div className="form-control">
+              <label className="label py-1"><span className="label-text text-xs font-semibold text-base-content/80">Constraints</span></label>
+              <textarea {...register('constraints')} rows={4} placeholder="Enter constraints; line breaks are preserved."
+                className="textarea textarea-bordered min-h-28 resize-y text-sm bg-base-100 font-mono" />
+            </div>
+
+            <div className="form-control">
               <label className="label py-1">
                 <span className="label-text text-xs font-semibold text-base-content/80">
                   Detailed Description & Problem Statement
@@ -171,7 +234,7 @@ function AdminPanel() {
               <textarea
                 {...register('description')}
                 placeholder="Describe the task, input formats, constraints, and problem statement clearly..."
-                className={`textarea textarea-bordered h-36 text-sm bg-base-100 leading-relaxed font-sans ${
+                className={`textarea textarea-bordered h-36 resize-y text-sm bg-base-100 leading-relaxed font-sans ${
                   errors.description ? 'textarea-error' : ''
                 }`}
               />
@@ -211,10 +274,7 @@ function AdminPanel() {
                     errors.tags ? 'select-error' : ''
                   }`}
                 >
-                  <option value="array">Array</option>
-                  <option value="linkedList">Linked List</option>
-                  <option value="graph">Graph</option>
-                  <option value="dp">DP (Dynamic Programming)</option>
+                  {DSA_TOPICS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
                 </select>
               </div>
             </div>
@@ -261,7 +321,7 @@ function AdminPanel() {
                   {visibleFields.length > 1 && (
                     <button
                       type="button"
-                      onClick={() => removeVisible(index)}
+                      onClick={() => setPendingRemoval({ type: 'visible', index })}
                       className="btn btn-ghost btn-xs text-error gap-1 hover:bg-error/10"
                     >
                       <Trash2 size={12} />
@@ -271,15 +331,17 @@ function AdminPanel() {
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <input
+                  <textarea
                     {...register(`visibleTestCases.${index}.input`)}
                     placeholder="Input (e.g. [2,7,11,15], target = 9)"
-                    className="input input-bordered input-sm font-mono text-xs w-full bg-base-200/50"
+                    rows={4}
+                    className="textarea textarea-bordered textarea-sm resize-y font-mono text-xs w-full bg-base-200/50"
                   />
-                  <input
+                  <textarea
                     {...register(`visibleTestCases.${index}.output`)}
                     placeholder="Expected Output (e.g. [0,1])"
-                    className="input input-bordered input-sm font-mono text-xs w-full bg-base-200/50"
+                    rows={4}
+                    className="textarea textarea-bordered textarea-sm resize-y font-mono text-xs w-full bg-base-200/50"
                   />
                 </div>
 
@@ -287,7 +349,7 @@ function AdminPanel() {
                   {...register(`visibleTestCases.${index}.explanation`)}
                   placeholder="Explanation of how the output was calculated..."
                   rows={2}
-                  className="textarea textarea-bordered textarea-sm text-xs w-full bg-base-200/50"
+                  className="textarea textarea-bordered textarea-sm resize-y text-xs w-full bg-base-200/50"
                 />
               </div>
             ))}
@@ -326,7 +388,7 @@ function AdminPanel() {
                   {hiddenFields.length > 1 && (
                     <button
                       type="button"
-                      onClick={() => removeHidden(index)}
+                  onClick={() => setPendingRemoval({ type: 'hidden', index })}
                       className="btn btn-ghost btn-xs text-error gap-1 hover:bg-error/10"
                     >
                       <Trash2 size={12} />
@@ -336,15 +398,17 @@ function AdminPanel() {
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <input
+                  <textarea
                     {...register(`hiddenTestCases.${index}.input`)}
                     placeholder="Hidden Standard Input"
-                    className="input input-bordered input-sm font-mono text-xs w-full bg-base-200/50"
+                    rows={4}
+                    className="textarea textarea-bordered textarea-sm resize-y font-mono text-xs w-full bg-base-200/50"
                   />
-                  <input
+                  <textarea
                     {...register(`hiddenTestCases.${index}.output`)}
                     placeholder="Hidden Expected Output"
-                    className="input input-bordered input-sm font-mono text-xs w-full bg-base-200/50"
+                    rows={4}
+                    className="textarea textarea-bordered textarea-sm resize-y font-mono text-xs w-full bg-base-200/50"
                   />
                 </div>
               </div>
@@ -397,7 +461,7 @@ function AdminPanel() {
                   {...register(`startCode.${index}.initialCode`)}
                   rows={6}
                   placeholder={`// Enter starter code boilerplate for ${languages[index]}`}
-                  className="textarea textarea-bordered font-mono text-xs bg-slate-950 text-slate-100 p-4 leading-relaxed w-full focus:border-primary"
+                  className="textarea textarea-bordered resize-y font-mono text-xs bg-slate-950 text-slate-100 p-4 leading-relaxed w-full focus:border-primary"
                 />
               </div>
 
@@ -411,7 +475,7 @@ function AdminPanel() {
                   {...register(`referenceSolution.${index}.completeCode`)}
                   rows={7}
                   placeholder={`// Enter verified complete solution for ${languages[index]}`}
-                  className="textarea textarea-bordered font-mono text-xs bg-slate-950 text-emerald-300 p-4 leading-relaxed w-full focus:border-primary"
+                  className="textarea textarea-bordered resize-y font-mono text-xs bg-slate-950 text-emerald-300 p-4 leading-relaxed w-full focus:border-primary"
                 />
               </div>
             </div>
@@ -431,17 +495,26 @@ function AdminPanel() {
             {submitting ? (
               <>
                 <span className="loading loading-spinner loading-xs" />
-                <span>Publishing Problem...</span>
+                <span>{isEditing ? 'Saving Changes...' : 'Publishing Problem...'}</span>
               </>
             ) : (
               <>
                 <Send size={14} />
-                <span>Publish Challenge</span>
+                <span>{isEditing ? 'Save Changes' : 'Publish Challenge'}</span>
               </>
             )}
           </button>
         </div>
       </form>
+      <ConfirmModal
+        isOpen={!!pendingRemoval}
+        title="Delete test case?"
+        message="This test case will be removed when you save the problem."
+        confirmText="Delete Test Case"
+        loading={false}
+        onConfirm={confirmRemoveTestCase}
+        onCancel={() => setPendingRemoval(null)}
+      />
     </PageShell>
   );
 }

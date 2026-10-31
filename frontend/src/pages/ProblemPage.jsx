@@ -10,6 +10,7 @@ import LoadingState from '../components/ui/LoadingState';
 import EmptyState from '../components/ui/EmptyState';
 import DifficultyBadge from '../components/ui/DifficultyBadge';
 import CodeBlock from '../components/ui/CodeBlock';
+import { getStarterCodeForLanguage } from '../config/defaultStarterTemplates';
 import {
   ArrowLeft,
   Play,
@@ -37,14 +38,8 @@ const langMap = {
   javascript: 'JavaScript'
 };
 
-const normalizeLanguage = (language = '') => language.toLowerCase().replace(/[^a-z0-9+]/g, '');
-
 const getInitialCode = (problem, selectedLanguage) => {
-  const expectedLanguage = normalizeLanguage(langMap[selectedLanguage]);
-  const template = problem?.startCode?.find(
-    (item) => normalizeLanguage(item.language) === expectedLanguage
-  );
-  return template?.initialCode || '';
+  return getStarterCodeForLanguage(problem?.startCode, langMap[selectedLanguage]);
 };
 
 const ProblemPage = () => {

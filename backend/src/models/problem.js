@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const {Schema} = mongoose;
+const { PROBLEM_TAGS } = require('../utils/problemTags');
 
 const problemSchema = new Schema({
     title:{
@@ -17,8 +18,12 @@ const problemSchema = new Schema({
     },
     tags:{
         type:String,
-        enum:['array','linkedList','graph','dp'],
+        enum: PROBLEM_TAGS,
         required:true
+    },
+    constraints:{
+        type:String,
+        default:''
     },
     visibleTestCases:[
         {
